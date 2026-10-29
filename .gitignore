@@ -1,0 +1,24 @@
+# Environments and caches
+venv/
+.venv/
+__pycache__/
+*.pyc
+cache.db
+
+# Never publish samples, test files or lab data
+samples/
+watched/
+*.bin
+*.exe
+*.dll
+*.zip
+*.7z
+
+# AppLocker policy dumps and local lab output
+*.xml
+effective*.xml
+
+# Secrets
+.env
+*.key
+vt_key.txt

@@ -1,0 +1,6 @@
+# Tested with Python 3.13 on Windows 11 Enterprise.
+# yara-python publishes ready-made Windows packages only up to Python 3.13.
+requests
+watchdog
+yara-python
+pefile
