@@ -118,6 +118,9 @@ python pipeline.py path\to\file.exe
 - AppLocker uses its own file hash, which differs from a plain SHA-256, so deny rules must be created through AppLocker's commands and cannot be built from VirusTotal data.
 - Only executable files are covered. Script files such as `.bat` need AppLocker script rules, which are not set up yet.
 - The Mark of the Web stamp is not always present and it spreads to copied files, so it can mislead.
+- Enforcement silently stops if the Windows **Application Identity** service is stopped. During testing the service had stopped, and files that should have been denied ran with no log entry at all. The tool does not yet check for this.
+- In my test, a denied file still ran when started from an **elevated (administrator)** window, and was blocked when started from a normal window. I have not worked out why, so treat enforcement as protection for ordinary-user sessions only.
+- Allow-list enforcement is easy to get wrong: with enforcement on, Windows components that update into folders no rule covers (for example Defender's platform folder under `ProgramData`) can be blocked, and in one case this locked me out of the Start menu until I allowed that folder.
 - The cache never expires, so a file unknown today stays "unknown" even if VirusTotal learns it later.
 - VirusTotal's free tier allows 4 lookups per minute and 500 per day.
 - Tested only on harmless samples and one packer.
