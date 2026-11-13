@@ -153,6 +153,7 @@ The first experiment confirms three points:
 3. Weight tuning is necessary. The original packing signal was over-counting; a small adjustment improved the balance between detection and false positives on legitimate tools.
 
 The tool is a working prototype suitable for further evaluation in an isolated lab. It is not production-ready and should not be used as a replacement for existing endpoint protection.
+
 ## License
 
 MIT. See `LICENSE`.
