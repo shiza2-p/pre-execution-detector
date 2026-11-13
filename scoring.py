@@ -35,14 +35,14 @@ def score_file(path):
 
     rules = yara_scan(path)
     if rules:
-        add(30, "YARA matched: " + ", ".join(rules))
+        add(20, "YARA matched: " + ", ".join(rules))
 
     values = [file_entropy(path)]
     sections = section_entropies(path)
     if sections:
         values += [e for _, size, e in sections if size > 0]
     if path.stat().st_size >= MIN_SIZE and max(values) > ENTROPY_LIMIT:
-        add(20, f"high entropy ({max(values):.2f})")
+        add(15, f"high entropy ({max(values):.2f})")
 
     if double_extension(path.name):
         add(30, "double extension")
