@@ -2,7 +2,7 @@
 
 A layered tool that inspects a file **before** it is allowed to run, scores it with several independent signals, and, when the evidence is strong enough, asks Windows itself (AppLocker) to refuse to run that exact file.
 
-> **Status:** working prototype. The tool is built and tested on harmless samples. A larger evaluation against real malware families is in progress and is not part of this repository.
+> **Status:** working prototype with first controlled experiment completed (offline lab). Larger evaluation against real malware families is planned.
 
 ![Architecture](docs/architecture.png)
 
@@ -42,15 +42,24 @@ A signal with no information (for example, a hash VirusTotal has never seen) add
 
 ## What was observed
 
-Using one harmless program (the UPX tool itself) and one packer:
+First controlled experiment (offline lab, November 2026):
 
-- Appending a few bytes to a file changes its hash completely, so VirusTotal had never seen the new file and an AppLocker hash rule built for the original did not match it.
-- The YARA rule and the entropy check still flagged the modified file, because its structure and contents were unchanged.
-- Entropy alone over-flags: a file of random bytes scored 8.00. This is why signals are combined into a score.
-- Several weak signals can add up to a block on a harmless file, and "looks packed" is counted twice (YARA and entropy). Tuning these is future work.
+| File                  | Category | Hash | +YARA | +Entropy | Score | Verdict     |
+|-----------------------|----------|------|-------|----------|-------|-------------|
+| curl.exe              | Clean    | pass | pass  | FLAG     | 20    | ALLOW       |
+| upx.exe               | Clean    | pass | FLAG  | FLAG     | 50    | SUSPICIOUS  |
+| curl_appended16.exe   | Variant  | pass | pass  | FLAG     | 20    | ALLOW       |
+| upx_appended16.exe    | Variant  | pass | FLAG  | FLAG     | 50    | SUSPICIOUS  |
 
-These results come from a very small test set and show that an effect exists, not how large it is.
+Key findings:
 
+- A 16-byte append completely changes the file hash. The hash layer alone cannot stop the modified sample.
+- The same YARA rule (`UPX_Packed_Section_Names`) and high-entropy flag still fired on the modified `upx.exe`. Structural signals survived the change.
+- Packing is currently double-counted (YARA + entropy), so a legitimate UPX binary already scores 50 (SUSPICIOUS). This needs weight tuning.
+- When VirusTotal was unreachable the tool correctly added zero points and did not treat the file as safe.
+- A clean high-entropy file (`curl.exe`) stayed at 20 points (ALLOW).
+
+These results come from a small, controlled set and demonstrate the intended effect. A larger evaluation with more clean files and malware families is planned.
 ## Quick start
 
 Tested on Windows 11 Enterprise (evaluation) with Python 3.13, inside a virtual machine.
