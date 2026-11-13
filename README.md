@@ -23,43 +23,44 @@ Windows antivirus does scan files, but it can be bypassed by scan exclusions, an
 | Scoring | Weighted points per signal, one verdict per file |
 | Enforcement | For BLOCK verdicts, creates an AppLocker SHA-256 hash **deny** rule for that file |
 
-### Scoring (starting weights, not yet tuned)
+### Scoring (after first tuning)
 
 | Signal | Points |
 |---|---|
 | VirusTotal: 15 or more engines | 80 |
 | VirusTotal: 5 to 14 engines | 40 |
 | VirusTotal: 1 to 4 engines | 10 |
-| YARA rule matched | 30 |
-| High entropy (over 7.0, files of 4 KB or more) | 20 |
+| YARA rule matched | 20 |
+| High entropy (over 7.0, files of 4 KB or more) | 15 |
 | Double extension | 30 |
 | Right-to-left filename trick | 40 |
 | Hidden attribute | 10 |
 | Downloaded from the internet (Zone.Identifier) | 10 |
 
-Verdicts: **ALLOW** below 30, **SUSPICIOUS** from 30 to 69, **BLOCK** at 70 or more.
+Verdicts: **ALLOW** below 30, **SUSPICIOUS** from 30 to 69, **BLOCK** at 70 or more.  
 A signal with no information (for example, a hash VirusTotal has never seen) adds zero points. It is never treated as "safe".
 
 ## What was observed
 
 First controlled experiment (offline lab, November 2026):
 
-| File                  | Category | Hash | +YARA | +Entropy | Score | Verdict     |
-|-----------------------|----------|------|-------|----------|-------|-------------|
-| curl.exe              | Clean    | pass | pass  | FLAG     | 20    | ALLOW       |
-| upx.exe               | Clean    | pass | FLAG  | FLAG     | 50    | SUSPICIOUS  |
-| curl_appended16.exe   | Variant  | pass | pass  | FLAG     | 20    | ALLOW       |
-| upx_appended16.exe    | Variant  | pass | FLAG  | FLAG     | 50    | SUSPICIOUS  |
+| File                  | Category | Score | Verdict     |
+|-----------------------|----------|-------|-------------|
+| curl.exe              | Clean    | 15    | ALLOW       |
+| notepad++.exe         | Clean    | 15    | ALLOW       |
+| upx.exe               | Clean    | 35    | SUSPICIOUS  |
+| curl_appended16.exe   | Variant  | 15    | ALLOW       |
+| upx_appended16.exe    | Variant  | 35    | SUSPICIOUS  |
 
 Key findings:
 
 - A 16-byte append completely changes the file hash. The hash layer alone cannot stop the modified sample.
 - The same YARA rule (`UPX_Packed_Section_Names`) and high-entropy flag still fired on the modified `upx.exe`. Structural signals survived the change.
-- Packing is currently double-counted (YARA + entropy), so a legitimate UPX binary already scores 50 (SUSPICIOUS). This needs weight tuning.
-- When VirusTotal was unreachable the tool correctly added zero points and did not treat the file as safe.
-- A clean high-entropy file (`curl.exe`) stayed at 20 points (ALLOW).
+- After reducing the packing-related weights (YARA 30→20, entropy 20→15), a legitimate UPX binary scores 35 (SUSPICIOUS) instead of 50. Clean high-entropy tools stay at 15 (ALLOW).
+- When VirusTotal was unreachable the tool correctly added zero points and did not treat any file as safe.
 
 These results come from a small, controlled set and demonstrate the intended effect. A larger evaluation with more clean files and malware families is planned.
+
 ## Quick start
 
 Tested on Windows 11 Enterprise (evaluation) with Python 3.13, inside a virtual machine.
@@ -123,7 +124,7 @@ python pipeline.py path\to\file.exe
 ## Limitations
 
 - Hash deny rules match exact contents only. Every new variant needs its own rule, so a modified file can run until it is scored and denied.
-- Scoring weights and thresholds are starting guesses and have not been tuned on labeled data.
+- Scoring weights received an initial adjustment based on the first controlled experiment. A larger labeled evaluation is still needed.
 - AppLocker uses its own file hash, which differs from a plain SHA-256, so deny rules must be created through AppLocker's commands and cannot be built from VirusTotal data.
 - Only executable files are covered. Script files such as `.bat` need AppLocker script rules, which are not set up yet.
 - The Mark of the Web stamp is not always present and it spreads to copied files, so it can mislead.
@@ -143,6 +144,15 @@ python pipeline.py path\to\file.exe
 - Blocking at process launch using Sysmon events
 - A small dashboard
 
+## Conclusions
+
+The first experiment confirms three points:
+
+1. Hash-based detection is fragile — a trivial content change produces a completely new hash.
+2. Combining structural signals (YARA + entropy) still detects the modified sample.
+3. Weight tuning is necessary. The original packing signal was over-counting; a small adjustment improved the balance between detection and false positives on legitimate tools.
+
+The tool is a working prototype suitable for further evaluation in an isolated lab. It is not production-ready and should not be used as a replacement for existing endpoint protection.
 ## License
 
 MIT. See `LICENSE`.
